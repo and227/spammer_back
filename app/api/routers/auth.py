@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status
+from fastapi.exceptions import HTTPException
 from fastapi_jwt_auth import AuthJWT
-from fastapi_jwt_auth.exceptions import AuthJWTException
+from fastapi_jwt_auth.exceptions import AuthJWTException, RevokedTokenError
 
 from pydantic import BaseModel
 
@@ -11,43 +12,57 @@ from core.config import settings
 from redis import Redis
 from datetime import timedelta
 
+from os import path
+import logging.config
+
+log_file_path = path.join(path.dirname(path.abspath(__file__)), 'logging.conf')
+logging.config.fileConfig(log_file_path, disable_existing_loggers=False)
+
+logger = logging.getLogger(__name__)
+
 router = APIRouter(tags=['authentication'])
 
 redis_denylist = Redis(
-    host=settings.REDIS_SERVER,
-    port=settings.REDIS_PORT,
-    db=settings.REDIS_DATABASE_NUM,
-    password=settings.REDIS_PASSWORD)
+        host=settings.REDIS_SERVER,
+        port=settings.REDIS_PORT,
+        db=settings.REDIS_DATABASE_NUM,
+        # password=settings.REDIS_PASSWORD
+    )
 
 class AuthJWTSettings(BaseModel):
     authjwt_secret_key: str = settings.JWT_SECRET
     authjwt_algorithm: str = settings.JWT_ALGO
     authjwt_denylist_enabled: bool = True
-    authjwt_denylist_token_checks: set = {"access", "refresh"}
+    authjwt_denylist_token_checks: set = {"access","refresh"}
+    access_expires: int = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    refresh_expires: int = timedelta(minutes=settings.REFRESH_TOKER_EXPIRE_MINUTES)
+
+auth_jwt_settings = AuthJWTSettings()
 
 @AuthJWT.load_config
 def get_config():
-    return AuthJWTSettings()
+    return auth_jwt_settings
 
 @AuthJWT.token_in_denylist_loader
-def check_token_in_denylist(token):
-    is_revoked = redis_denylist.get(token['jti'])
-    return is_revoked and is_revoked == True
+def check_if_token_in_denylist(token):
+    token_id = token['jti']
+    token_type = token['type']
+    is_revoked = redis_denylist.get(token_id)
+    if is_revoked:
+        result = is_revoked.decode() == 'true'
+    else:
+        result = False
+    logger.info(f'checking {token_type} token {token_id} with value "{is_revoked}"; resuld - {result}')
+    return result
 
 def create_token_pair(Authorization: AuthJWT, subj: str) -> Token:
     access_token = Authorization.create_access_token(
-        subject=subj,
-        expires_time=timedelta(
-            minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
-        )
+        subject=subj
     )
     refresh_token = Authorization.create_refresh_token(
-        subject=subj,
-        expires_time=timedelta(
-            minutes=settings.REFRESH_TOKER_EXPIRE_MINUTES
-        )
+        subject=subj
     )
-    saved_token = access_token
+    redis_denylist.set('saved_token', access_token)
     return Token(
         access_token=access_token,
         refresh_token=refresh_token
@@ -62,11 +77,30 @@ async def register(user: UserIn, Authorization: AuthJWT = Depends()):
 @router.post('/refresh')
 async def login(Authorization: AuthJWT = Depends()):
     # add previous access jwt token to denylist
-    denylist.add(Authorization.get_raw_jwt(saved_token)['jti'], 10, True)
+    saved_token = redis_denylist.get('saved_token')
+    redis_denylist.setex(
+        Authorization.get_raw_jwt(saved_token)['jti'],
+        settings.ACCESS_TOKEN_EXPIRE_MINUTES*60, 'true'
+    )
     Authorization.jwt_refresh_token_required()
     # add previous refresh jwt token to denylist 
-    redis_denylist.setex(Authorization.get_raw_jwt()['jti'], 10, True)
+    redis_denylist.setex(
+        Authorization.get_raw_jwt()['jti'],
+        settings.REFRESH_TOKER_EXPIRE_MINUTES*60, 'true'
+    )
 
     subject = Authorization.get_jwt_subject()
-    return create_token_pair(subject)
+    return create_token_pair(Authorization, subject)
 
+@router.get('/access')
+async def access_test(Authorization: AuthJWT = Depends()):
+    try:
+        Authorization.jwt_required()
+        token_id = Authorization.get_raw_jwt()['jti']
+        logger.info(f'autorization passed with {token_id}')
+        return {'status': 'OK'}
+    except RevokedTokenError as e:
+        raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token has been revoked"
+            )

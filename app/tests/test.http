@@ -1,0 +1,25 @@
+@hostname=localhost
+@port=8080
+@host={{hostname}}:{{port}}
+
+@access_token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0c3VwZXJ1c2VyIiwiaWF0IjoxNjIwNTAxNDE3LCJuYmYiOjE2MjA1MDE0MTcsImp0aSI6IjliOTAwYjNmLTBiYjAtNDY1Ni05NmFkLTM4OWE3ZDMyMGFiOCIsImV4cCI6MTYyMDUwMjMxNywidHlwZSI6ImFjY2VzcyIsImZyZXNoIjpmYWxzZX0.6rHM2QWmCklRccVrVn1RqYlpaZnxqB4kqsM-fOjgBLc
+@refresh_token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0c3VwZXJ1c2VyIiwiaWF0IjoxNjIwNTAxNDE3LCJuYmYiOjE2MjA1MDE0MTcsImp0aSI6ImUxNjc0ZTc2LWFlNTEtNGFhMy05MmZlLTRkNjljZmJkNWQ4OCIsImV4cCI6MTYyMzA5MzQxNywidHlwZSI6InJlZnJlc2gifQ.O3mvtHW4S1KLLsIhZo3gXWn3qVMEBKH8Sn6ddmFutow
+
+### Create new user
+POST /api/register
+Host: {{host}}
+
+{
+  "email": "testsuperuser",
+  "password": "myuserpass"
+}
+
+### Refresh token
+POST /api/refresh
+Host: {{host}}
+Authorization: Bearer {{refresh_token}}
+
+### Get user
+GET /api/access
+Host: {{host}}
+Authorization: Bearer {{access_token}}

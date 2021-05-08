@@ -1,0 +1,53 @@
+version: "3.3"
+services:
+  redis:
+    image: redis:latest
+    container_name: some-redis
+    env_file:
+      - .env
+    ports:
+      - "${REDIS_PORT}:6379"
+    volumes: 
+      - 'redisdata:${REDIS_DATA}'
+
+  db:
+    image: postgres:latest
+    container_name: some-postgres
+    env_file:
+      - .env
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data/
+
+  web:
+    build: .
+    container_name: spammer-app
+    depends_on: 
+      - db
+      - redis
+    ports:
+      - "8080:8000"
+    volumes:
+      - type: bind
+        source: ./config/
+        target: /docker-entrypoint.d/
+      - type: bind
+        source: ./app
+        target: /app
+    env_file:
+      - .env
+    # command: [
+    #     "./wait-for-it.sh",
+    #     "db:${POSTGRES_PORT}",
+    #     "redis:${REDIS_PORT}",
+    #     "--",
+    #     "unitd",
+    #     "--no-daemon",
+    #     "--control",
+    #     "unix:/var/run/control.unit.sock"
+    #   ]
+
+volumes:
+  pgdata:
+  redisdata:

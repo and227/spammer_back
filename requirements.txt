@@ -16,7 +16,6 @@ iniconfig==1.1.1
 Mako==1.1.4
 MarkupSafe==1.1.1
 packaging==20.9
-pkg-resources==0.0.0
 pluggy==0.13.1
 psycopg2==2.8.6
 py==1.10.0
