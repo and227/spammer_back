@@ -12,13 +12,14 @@ class Settings(BaseSettings):
     def build_db_url(cls, url: Optional[str], values: Dict[str, Any]) -> Any:
         if isinstance(url, str):
             return url
-        return PostgresDsn.build(
+        pg_dsn = PostgresDsn.build(
             scheme='postgresql',
             user=values.get('POSTGRES_USER'),
             password=values.get('POSTGRES_PASSWORD'),
             host=values.get('POSTGRES_SERVER'),
-            path=values.get('POSTGRES_DB', '')
+            path=f"/{values.get('POSTGRES_DB', '')}"
         )
+        return pg_dsn
 
     USER_LOGIN: str
     USER_PASSWORD: str
@@ -36,7 +37,7 @@ class Settings(BaseSettings):
 
     class Config:
         case_sensitive = True
-        env_file = './app/core/.env'
+        env_file = '.env'
         env_file_encoding = 'utf-8'
 
 settings = Settings()

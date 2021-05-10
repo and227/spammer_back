@@ -6,12 +6,20 @@ class SpammerStateEnum(str, Enum):
     working = 'working'
     stopped = 'stopped'
 
-class Spammer(BaseModel):
-    id: int
+class SpammerBase(BaseModel):
     name: str
     target: HttpUrl
-    state: SpammerStateEnum = SpammerStateEnum.idle
-    progress: int
+
+class SpammerIn(SpammerBase):
+    pass
+
+class SpammerStore(SpammerBase):
+    id: int
 
     class Config:
         orm_mode = True
+
+class SpammerOut(SpammerStore):
+    state: SpammerStateEnum = SpammerStateEnum.idle
+    progress: int
+

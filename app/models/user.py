@@ -1,10 +1,7 @@
 from sqlalchemy import Column
 from sqlalchemy.types import Integer, String
-from models.base import ActiveBase, TimestampBase
+from db.base_class import Base
 
-class User(ActiveBase, TimestampBase):
-    __tablename__ = 'users'
-    
-    id = Column(Integer, primary_key=True)
+class User(Base):    
     email = Column(String, unique=True)
     hashed_password = Column(String, unique=True)
