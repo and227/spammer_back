@@ -1,8 +1,8 @@
-"""Added users and spammers tables
+"""empty message
 
-Revision ID: 7a2cbd5903c8
+Revision ID: 6769398cd044
 Revises: 
-Create Date: 2021-05-10 23:22:13.896769
+Create Date: 2021-06-14 22:10:33.220946
 
 """
 from alembic import op
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 from schemas.spammer import SpammerStateEnum
 
 # revision identifiers, used by Alembic.
-revision = '7a2cbd5903c8'
+revision = '6769398cd044'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -23,23 +23,26 @@ def upgrade():
         SpammerStateEnum,
         name='spammer_type_enum'
     )
-    # spammer_type_enum.create(op.get_bind())
 
     op.create_table('spammer',
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('is_active', sa.Boolean(), nullable=True),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
-    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
-    sa.Column('name', sa.String(), nullable=True),
-    sa.Column('target', sa.String(), nullable=True),
-    # sa.Column('state', sa.Enum('idle', 'working', 'stopped', name='spammerstateenum'), nullable=True),
-    sa.Column('progress', sa.Integer(), nullable=True),
-    sa.PrimaryKeyConstraint('id')
+        sa.Column('id', sa.Integer(), nullable=False),
+        sa.Column('is_active', sa.Boolean(), nullable=True),
+        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
+        sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
+        sa.Column('spammer_type', sa.String(), nullable=True),
+        sa.Column('login', sa.String(), nullable=True),
+        sa.Column('target', sa.String(), nullable=True),
+        sa.Column('target_type', sa.String(), nullable=True),
+        sa.Column('current', sa.Integer(), nullable=True),
+        sa.Column('total', sa.Integer(), nullable=True),
+        # sa.Column('state', sa.Enum('working', 'stopped', name='spammerstateenum'), nullable=True),
+        sa.PrimaryKeyConstraint('id')
     )
+
     op.add_column(
         'spammer', 
         sa.Column("state", spammer_type_enum,
-        default=SpammerStateEnum.idle
+        default=SpammerStateEnum.stopped
     ))
 
     op.create_table('user',

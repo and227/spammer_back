@@ -35,6 +35,10 @@ class Settings(BaseSettings):
     REDIS_PASSWORD: str
     REDIS_DATABASE_NUM: str
 
+    SPAMMER_SERVER: str
+    SPAMMER_PORT: str
+    SPAMMER_WEBSOCKET_PORT: str
+
     class Config:
         case_sensitive = True
         env_file = '.env'

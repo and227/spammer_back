@@ -20,12 +20,24 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data/
 
+  spammer:
+    build: 
+      context: .
+      dockerfile: spammer.Dockerfile
+    container_name: spammer-script
+    ports:
+      - "${SPAMMER_PORT}:9000"
+      - "${SPAMMER_WEBSOCKET_PORT}:9001"
+
   web:
-    build: .
+    build: 
+      context: .
+      dockerfile: Dockerfile
     container_name: spammer-app
     depends_on: 
       - db
       - redis
+      - spammer
     ports:
       - "8080:8000"
     volumes:
