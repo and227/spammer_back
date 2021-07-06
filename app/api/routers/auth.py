@@ -2,15 +2,21 @@ from fastapi import APIRouter, Depends, status
 from fastapi.exceptions import HTTPException
 from fastapi_jwt_auth import AuthJWT
 from fastapi_jwt_auth.exceptions import AuthJWTException, RevokedTokenError
+from fastapi import status
 
 from pydantic import BaseModel
+from pydantic import ValidationError
+from starlette.status import HTTP_422_UNPROCESSABLE_ENTITY
 
-from schemas.user import UserIn
+from schemas.user import UserIn, UserInRegister
 from schemas.token import Token
 from core.config import settings
+from db.session import Session, get_database_session
+from crud import users
 
 from redis import Redis
 from datetime import timedelta
+from core.helpers import pass_context
 
 from os import path
 import logging.config
@@ -39,9 +45,11 @@ class AuthJWTSettings(BaseModel):
 
 auth_jwt_settings = AuthJWTSettings()
 
+
 @AuthJWT.load_config
 def get_config():
     return auth_jwt_settings
+
 
 @AuthJWT.token_in_denylist_loader
 def check_if_token_in_denylist(token):
@@ -54,6 +62,7 @@ def check_if_token_in_denylist(token):
         result = False
     logger.info(f'checking {token_type} token {token_id} with value "{is_revoked}"; resuld - {result}')
     return result
+
 
 def create_token_pair(Authorization: AuthJWT, subj: str) -> Token:
     access_token = Authorization.create_access_token(
@@ -68,11 +77,48 @@ def create_token_pair(Authorization: AuthJWT, subj: str) -> Token:
         refresh_token=refresh_token
     )
 
+
+def authenticate_user(session: Session, user: UserIn):
+    db_user = users.get_user_by_email(session, user.email)
+    if db_user:
+        if pass_context.verify(user.password, db_user.hashed_password):
+            return True
+        else:
+            return False
+    else:
+        return False
+
+
 @router.post('/register', response_model=Token)
-async def register(user: UserIn, Authorization: AuthJWT = Depends()):
-    if user.email == settings.USER_LOGIN \
-        and user.password == settings.USER_PASSWORD:
+async def register(
+        user: UserInRegister,
+        Authorization: AuthJWT = Depends(),
+        session: Session = Depends(get_database_session),
+    ):
+    if not users.get_user_by_email(session, user.email):
+        users.create_user(session, user)
         return create_token_pair(Authorization, user.email)
+    else:
+        raise HTTPException(
+            status_code=HTTP_422_UNPROCESSABLE_ENTITY,
+            detail='Email must be unique.'
+        )
+
+@router.post('/login', response_model=Token)
+async def register(
+        user: UserIn,
+        Authorization: AuthJWT = Depends(),
+        session: Session = Depends(get_database_session),
+    ):
+    if authenticate_user(session, user):
+        return create_token_pair(Authorization, user.email)
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail='wrong email or password',
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+
 
 @router.post('/refresh')
 async def login(Authorization: AuthJWT = Depends()):
@@ -91,6 +137,7 @@ async def login(Authorization: AuthJWT = Depends()):
 
     subject = Authorization.get_jwt_subject()
     return create_token_pair(Authorization, subject)
+
 
 @router.get('/access')
 async def access_test(Authorization: AuthJWT = Depends()):

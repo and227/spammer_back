@@ -1,5 +1,4 @@
 from typing import List
-from api.routers.auth import login
 
 from db.session import Session
 from models.spammer import Spammer
