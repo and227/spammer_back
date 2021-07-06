@@ -35,3 +35,4 @@ toml==0.10.2
 typing-extensions==3.7.4.3
 uvicorn==0.13.4
 zipp==3.4.1
+passlib==1.7.4
