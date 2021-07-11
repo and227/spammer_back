@@ -35,11 +35,45 @@ class ListenThread(Thread):
 
     async def delete_spammers(self, ids):
         deleted_ids = []
-        for id in ids:
-            if id in self.spammers_info:
-                del self.spammers_info[id]
+        if len(ids) == 0:
+            for id in self.spammers_info:
                 deleted_ids.append(id)
+        else:
+            for id in ids:
+                if id in self.spammers_info:
+                    deleted_ids.append(id)
+
+        for id in deleted_ids:
+            del self.spammers_info[id]
+
         return deleted_ids
+
+    async def start_spammers(self, ids):
+        started_ids = []
+        if len(ids) == 0:
+            for id in self.spammers_info:
+                self.spammers_info[id]['state'] = 'working'
+                started_ids.append(id)
+        else:
+            for id in ids:
+                if id in self.spammers_info:
+                    self.spammers_info[id]['state'] = 'working'
+                    started_ids.append(id)
+        return started_ids
+
+    async def stop_spammers(self, ids):
+        stopped_ids = []
+        if len(ids) == 0:
+            for id in self.spammers_info:
+                self.spammers_info[id]['state'] = 'stopped'
+                stopped_ids.append(id)
+        else:
+            for id in ids:
+                if id in self.spammers_info:
+                    self.spammers_info[id]['state'] = 'stopped'
+                    stopped_ids.append(id)
+        return stopped_ids
+
 
     async def get_spammers_state(self, id_list):
         spammers_state_list = []
@@ -49,40 +83,57 @@ class ListenThread(Thread):
         return spammers_state_list
 
     async def handle_command(self, reader, writer):
-        data: bytes = await reader.read(512)
-        message = json.loads(data.decode('utf-8'))
-        command = message['command']
+        data: bytes = await reader.read(8192)
+        if data:
+            print(data)
+            message = json.loads(data.decode('utf-8'))
+            print(message)
+            command = message['command']
 
-        if command == 'state':
-            spammers_state_list = await self.get_spammers_state(message['data'])
-            writer.write(json.dumps(spammers_state_list).encode('utf-8'))
-            await writer.drain()
-        elif command == 'add':
-            self.restart_event.set()
-            add_spammers_ids = await self.add_spammers(message['data'])
-            message['data'] = add_spammers_ids
-            writer.write(json.dumps(message).encode('utf-8'))
-            await writer.drain()
-        elif command == 'start':
-            self.restart_event.set()
-            start_smappers_ids = message['data']
-            writer.write(json.dumps(message).encode('utf-8'))
-            await writer.drain()
-            logger.info(f'Spammers with ids {start_smappers_ids} started')
-        elif command == 'stop':
-            self.restart_event.set()
-            stop_spammers_ids = message['data']
-            writer.write(json.dumps(message).encode('utf-8'))
-            await writer.drain()
-            logger.info(f'Spammers with ids {stop_spammers_ids} stopped')
-        elif command == 'delete':
-            self.restart_event.set()
-            deleted_spammers_ids = await self.delete_spammers(message['data'])
-            message['data'] = deleted_spammers_ids
-            writer.write(json.dumps(message).encode('utf-8'))
-            logger.info(f'Spammers with ids {deleted_spammers_ids} deleted')
+            if command == 'state':
+                spammers_state_list = await self.get_spammers_state(message['data'])
+                writer.write(json.dumps({'command': 'state', 'data': spammers_state_list}).encode('utf-8'))
+                await writer.drain()
+            elif command == 'add':
+                self.restart_event.set()
+                add_spammers_ids = await self.add_spammers(message['data'])
+                message['data'] = add_spammers_ids
+                writer.write(json.dumps(message).encode('utf-8'))
+                await writer.drain()
+                logger.info(f'Spammers with ids {add_spammers_ids} added')
+            elif command == 'start':
+                self.restart_event.set()
+                start_spammers_ids = await self.start_spammers(message['data'])
+                message['data'] = start_spammers_ids
+                writer.write(json.dumps(message).encode('utf-8'))
+                await writer.drain()
+                logger.info(f'Spammers with ids {start_spammers_ids} started')
+            elif command == 'stop':
+                self.restart_event.set()
+                stop_spammers_ids = await self.stop_spammers(message['data'])
+                message['data'] = stop_spammers_ids
+                writer.write(json.dumps(message).encode('utf-8'))
+                await writer.drain()
+                logger.info(f'Spammers with ids {stop_spammers_ids} stopped')
+            elif command == 'delete':
+                self.restart_event.set()
+                deleted_spammers_ids = await self.delete_spammers(message['data'])
+                message['data'] = deleted_spammers_ids
+                writer.write(json.dumps(message).encode('utf-8'))
+                await writer.drain()
+                logger.info(f'Spammers with ids {deleted_spammers_ids} deleted')
+            elif command == 'replace':
+                self.restart_event.set()
+                await self.delete_spammers([])
+                add_spammers_ids = await self.add_spammers(message['data'])
+                message['data'] = add_spammers_ids
+                writer.write(json.dumps(message).encode('utf-8'))
+                await writer.drain()
+                logger.info(f'Spammers with ids {add_spammers_ids} replace old')
+            else:
+                logger.info(f'Unknown command "{command}"')
         else:
-            logger.info(f'Unknown command "{command}"')
+            logger.info('Socket connection closed')
 
     async def websocket_handle_command(self, websocket, path):
         data: str = await websocket.recv()
@@ -97,12 +148,12 @@ class ListenThread(Thread):
         asyncio.set_event_loop(loop)
         server = asyncio.start_server(
             client_connected_cb=self.handle_command,
-            host='127.0.0.1',
+            host='0.0.0.0',
             port=9000,
             loop=loop
         )
         websocket_server = websockets.serve(
-            self.websocket_handle_command, '127.0.0.1', 9001)
+            self.websocket_handle_command, '0.0.0.0', 9001)
 
         server_future = loop.run_until_complete(server)
         websocket_server_future = loop.run_until_complete(websocket_server)
@@ -126,14 +177,15 @@ class ListenThread(Thread):
 async def spammer(data):
     while True:
         await asyncio.sleep(random.randint(5, 30))
-        data['target']['current'] += 1
-        if data['target']['current'] >= 100:
-            data['target']['total'] += 1
-        current_id = data["id"]
-        current_val = data["target"]["current"]
-        total_val = data["target"]["total"]
-        logger.info(
-            f'spammer with id {current_id} make {current_val} current and {total_val} total')
+        if data['state'] == 'working':
+            data['target']['current'] += 1
+            if data['target']['current'] >= 100:
+                data['target']['total'] += 1
+            current_id = data["id"]
+            current_val = data["target"]["current"]
+            total_val = data["target"]["total"]
+            logger.info(
+                f'spammer with id {current_id} make {current_val} current and {total_val} total')
 
 
 class SpammerThread(Thread):

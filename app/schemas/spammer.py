@@ -26,7 +26,7 @@ class SpammerBase(BaseModel):
     spammer_type: str
     login: str
     target: SpammerTarget
-    state: SpammerStateEnum
+    state: SpammerStateEnum = SpammerStateEnum.stopped
 
 
 class SpammerIn(SpammerBase):
@@ -46,8 +46,9 @@ class SpammerOut(SpammerStore):
 
 class SpammerCommand(BaseModel):
     command: str
-    data: Union[SpammerIn, List[SpammerIn], List[int]]
+    data: Union[SpammerStore, List[SpammerStore], List[int]]
 
 
 class SpammerResult(BaseResult):
-    data: Union[List[SpammerOut], str]
+    status: str
+    data: Union[List[SpammerStore], List[int], str]

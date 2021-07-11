@@ -4,18 +4,31 @@ from db.session import Session
 from models.spammer import Spammer
 from schemas import spammer as spammer_scheme
 
-
-def create_spammer(db: Session, spammer: spammer_scheme.SpammerIn):
-    new_spammer = Spammer(
+def spammer_from_orm(spammer: Spammer) -> spammer_scheme.SpammerStore:
+    return spammer_scheme.SpammerStore(
+        id=spammer.id,
         spammer_type=spammer.spammer_type,
         login=spammer.login,
-        target=spammer.target,
-        target_type=spammer.target_type
+        state=spammer.state,
+        target=spammer_scheme.SpammerTarget(
+            target_type=spammer.target_type,
+            current=spammer.current,
+            total=spammer.total
+        )
     )
-    db.add(new_spammer)
+
+def create_spammers(db: Session, spammers: List[spammer_scheme.SpammerIn]):
+    new_spammers = [Spammer(
+        spammer_type=spammer.spammer_type,
+        login=spammer.login,
+        target_type=spammer.target.target_type,
+        current=spammer.target.current,
+        total=spammer.target.total
+    ) for spammer in spammers]
+    for spammer in new_spammers:
+        db.add(spammer)
     db.commit()
-    db.refresh(new_spammer)
-    return new_spammer
+    return new_spammers
 
 
 def update_spammer_by_id(
@@ -29,8 +42,9 @@ def update_spammer_by_id(
 
     update_spammer = db.query(Spammer) \
         .filter(Spammer.id == spammer_id) \
-        .first() \
-        .update(update_data)
+        .first()
+    for spammer in update_spammer:
+        spammer.update(update_data)
     db.commit()
     db.refresh(update_spammer)
     return update_spammer
@@ -43,7 +57,8 @@ def delete_spammer_by_id(
     delete_spammer = db.query(Spammer) \
         .filter(Spammer.id == spammer_id) \
         .first()
-    delete_spammer.delete()
+    if delete_spammer:
+        db.delete(delete_spammer)
     db.commit()
     return delete_spammer
 
@@ -63,7 +78,7 @@ def read_spammers_by_ids(
     if spammer_ids:
         result = db \
             .query(Spammer) \
-            .filter(Spammer.id in spammer_ids) \
+            .filter(Spammer.id.in_(spammer_ids)) \
             .all()
     else:
         result = db \
@@ -79,19 +94,18 @@ def start_spammers_by_ids(
     if spammer_ids:
         result = db \
             .query(Spammer) \
-            .filter(Spammer.id in spammer_ids) \
-            .all() \
+            .filter(Spammer.id.in_(spammer_ids)) \
             .update({
                 'state': spammer_scheme.SpammerStateEnum.working
-            })
+            }, synchronize_session=False)
     else:
         result = db \
             .query(Spammer) \
-            .all() \
             .update({
                 'state': spammer_scheme.SpammerStateEnum.working
-            })
-    return result
+            }, synchronize_session=False)
+    db.commit()
+    return read_spammers_by_ids(db, spammer_ids)
 
 
 def stop_spammers_by_ids(
@@ -101,16 +115,16 @@ def stop_spammers_by_ids(
     if spammer_ids:
         result = db \
             .query(Spammer) \
-            .filter(Spammer.id in spammer_ids) \
-            .all() \
+            .filter(Spammer.id.in_(spammer_ids)) \
             .update({
                 'state': spammer_scheme.SpammerStateEnum.stopped
-            })
+            }, synchronize_session=False)
     else:
         result = db \
             .query(Spammer) \
-            .all() \
             .update({
                 'state': spammer_scheme.SpammerStateEnum.stopped
-            })
-    return result
+            }, synchronize_session=False)
+    db.commit()
+    return read_spammers_by_ids(db, spammer_ids)
+
