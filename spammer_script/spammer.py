@@ -181,6 +181,7 @@ async def spammer(data):
             data['target']['current'] += 1
             if data['target']['current'] >= 100:
                 data['target']['total'] += 1
+                data['target']['current'] = 0
             current_id = data["id"]
             current_val = data["target"]["current"]
             total_val = data["target"]["total"]

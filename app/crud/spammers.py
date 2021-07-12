@@ -4,6 +4,8 @@ from db.session import Session
 from models.spammer import Spammer
 from schemas import spammer as spammer_scheme
 
+from copy import deepcopy
+
 def spammer_from_orm(spammer: Spammer) -> spammer_scheme.SpammerStore:
     return spammer_scheme.SpammerStore(
         id=spammer.id,
@@ -52,15 +54,18 @@ def update_spammer_by_id(
 
 def delete_spammer_by_id(
     db: Session,
-    spammer_id: int
+    spammer_ids: int
 ):
-    delete_spammer = db.query(Spammer) \
-        .filter(Spammer.id == spammer_id) \
-        .first()
-    if delete_spammer:
-        db.delete(delete_spammer)
+    read_spammers_by_ids(db, spammer_ids)
+    if spammer_ids:
+        delete_spammers = db.query(Spammer) \
+            .filter(Spammer.id.in_(spammer_ids))
+    else:
+        delete_spammers = db.query(Spammer)
+    ret_spammers = deepcopy(delete_spammers.all())
+    delete_spammers.delete(synchronize_session=False)
     db.commit()
-    return delete_spammer
+    return ret_spammers
 
 
 def read_spammers(

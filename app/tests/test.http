@@ -8,10 +8,21 @@
 ### Create new user
 POST /api/register
 Host: {{host}}
+Content-Type: "application/application/json"
 
 {
-  "email": "testsuperuser",
-  "password": "myuserpass"
+  "email": "testsuperuser@gmail.com",
+  "password": "myuserpassS1_"
+}
+
+### Login
+POST /api/login
+Host: {{host}}
+Content-Type: "application/application/json"
+
+{
+  "email": "testsuperuser@gmail.com",
+  "password": "myuserpassS1_"
 }
 
 ### Refresh token

@@ -26,6 +26,7 @@ logging.config.fileConfig(log_file_path, disable_existing_loggers=False)
 
 logger = logging.getLogger(__name__)
 
+
 router = APIRouter(tags=['authentication'])
 
 redis_denylist = Redis(
@@ -95,6 +96,8 @@ async def register(
         Authorization: AuthJWT = Depends(),
         session: Session = Depends(get_database_session),
     ):
+    logger.info('register user: ' + str(user))
+
     if not users.get_user_by_email(session, user.email):
         users.create_user(session, user)
         return create_token_pair(Authorization, user.email)
@@ -110,8 +113,26 @@ async def register(
         Authorization: AuthJWT = Depends(),
         session: Session = Depends(get_database_session),
     ):
+    logger.info('login user: ' + str(user))
+
     if authenticate_user(session, user):
         return create_token_pair(Authorization, user.email)
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail='wrong email or password',
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+
+@router.delete('/user_delete')
+async def delete_user(
+        user: UserIn,
+        session: Session = Depends(get_database_session),
+    ):
+    logger.info('delete user: ' + str(user))
+
+    if authenticate_user(session, user):
+        return users.delete_user(session, user)
     else:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

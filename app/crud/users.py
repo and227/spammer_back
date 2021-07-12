@@ -18,3 +18,11 @@ def get_user_by_email(db: Session, email: str):
         .filter(UserTable.email == email) \
         .first()
     return result
+
+def delete_user(db: Session, user: user_scheme.UserIn):
+    result = db.query(UserTable) \
+        .filter(UserTable.email == user.email) \
+        .delete()
+    db.commit()
+    return result
+
