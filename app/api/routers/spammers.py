@@ -27,11 +27,6 @@ router = APIRouter(
 )
 
 
-@router.get('/test')
-async def spammers_test():
-    return JSONResponse(status_code=200, content={"key": "value1234"}) 
-
-
 @router.on_event("startup")
 async def sync_spammer_script(
     # session: Session = Depends(get_database_session),
@@ -62,7 +57,11 @@ async def sync_spammer_script(
     await close_spammer_connection(spammer_connector)
 
 
-@router.post('/', response_model=spammer_schemas.SpammerResult)
+@router.post(
+    '/',
+    response_model=spammer_schemas.SpammerResult,
+    status_code=status.HTTP_201_CREATED
+)
 async def spammers_create(
     spammer_data: List[spammer_schemas.SpammerIn],
     session: Session = Depends(get_database_session),
@@ -124,7 +123,7 @@ async def spammers_delete(
     )
 
 
-@router.get('/', response_model=List[spammer_schemas.SpammerOut])
+@router.get('/', response_model=spammer_schemas.SpammerResult)
 async def spammers_get(
     offset: int = Query(0),
     limit: int = Query(0),
@@ -132,10 +131,11 @@ async def spammers_get(
     spammer_connector = Depends(connect_spammer)
 ):
     database_result = spammers.read_spammers(session, offset, limit)
-    result = send_spammer_command(
+    spammers_ids = list(map(lambda m: m.id, database_result))
+    result = await send_spammer_command(
         spammer_connector,
         command=spammer_schemas.SpammerCommand(
-            command='status', data=database_result
+            command='state', data=spammers_ids
         )
     )
     return spammer_schemas.SpammerResult(

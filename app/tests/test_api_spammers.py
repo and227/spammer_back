@@ -9,15 +9,6 @@ import requests
 from requests.adapters import HTTPAdapter, Retry
 
 
-def test_spammers_create(wait_app_container, clear_spammers, make_spammers):
-    request_session, api_url = wait_app_container
-    print(request_session, api_url)
-    response = request_session.post(url=api_url+'api/spammers/', json=make_spammers)
-    print(make_spammers)
-    print(response.json())
-    assert response.status_code == 200
-
-
 def check_spammers(spammers_sample, spammers_checked):
     spammers_sample = sorted(spammers_sample, key=lambda s: s['spammer_type'])
     spammers_checked = sorted(spammers_checked, key=lambda s: s['spammer_type'])
@@ -57,6 +48,27 @@ def check_spammers_stop(spammers_checked):
         return False
 
     return True
+
+
+def test_spammers_create(wait_app_container, clear_spammers, make_spammers):
+    request_session, api_url = wait_app_container
+    print(request_session, api_url)
+    response = request_session.post(url=api_url+'api/spammers/', json=make_spammers)
+    assert response.status_code == 201
+
+
+def test_spammers_get(wait_app_container, make_spammers):
+    request_session, api_url = wait_app_container
+    response = request_session.get(url=api_url+'api/spammers/', params={'offset': 0, 'limit': 10})
+    assert response.status_code == 200
+    assert check_spammers(make_spammers, response.json()['data'])
+
+
+def test_spammers_get_status(wait_app_container, make_spammers):
+    request_session, api_url = wait_app_container
+    response = request_session.get(url=api_url+'api/spammers/status')
+    print(response.json())
+    assert check_spammers(make_spammers, response.json()['data'])
 
 
 def test_spammers_status(wait_app_container, make_stored_spammers):
