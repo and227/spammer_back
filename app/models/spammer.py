@@ -3,15 +3,17 @@ from sqlalchemy.types import Integer, String, Enum
 
 from schemas.spammer import SpammerStateEnum
 from db.base_class import Base
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy_json import mutable_json_type
 
 
 class Spammer(Base):
-    spammer_type = Column(String, default='vk')
+    script_template = Column(String)
     login = Column(String)
-    target_type = Column(String, default='post')
-    current = Column(Integer, default=0)
-    total = Column(Integer, default=0)
+    password = Column(String)
+    options = Column(mutable_json_type(dbtype=JSONB, nested=True))
     state = Column(
         Enum(SpammerStateEnum),
         default=SpammerStateEnum.stopped
     )
+    statistics = Column(mutable_json_type(dbtype=JSONB, nested=True))

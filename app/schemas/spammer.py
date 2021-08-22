@@ -1,5 +1,5 @@
-from typing import Any, List, Optional, Union
-from pydantic import BaseModel, HttpUrl
+from typing import Any, List, Optional, Union, Dict
+from pydantic import BaseModel, HttpUrl, Json
 from enum import Enum
 
 from core.base_schemas import BaseResult
@@ -23,10 +23,11 @@ class SpammerTarget(BaseModel):
 
 
 class SpammerBase(BaseModel):
-    spammer_type: str
+    script_template: str
     login: str
-    target: SpammerTarget
+    password: str
     state: SpammerStateEnum = SpammerStateEnum.stopped
+    options: Dict = dict()
 
 
 class SpammerIn(SpammerBase):
@@ -35,13 +36,10 @@ class SpammerIn(SpammerBase):
 
 class SpammerStore(SpammerBase):
     id: int
+    statistics: Dict = dict()
 
     class Config:
         orm_mode = True
-
-
-class SpammerOut(SpammerStore):
-    pass
 
 
 class SpammerCommand(BaseModel):
@@ -49,6 +47,21 @@ class SpammerCommand(BaseModel):
     data: Union[SpammerStore, List[SpammerStore], List[int]]
 
 
-class SpammerResult(BaseResult):
+class BaseResult(BaseModel):
     status: str
-    data: Union[List[SpammerStore], List[int], str]
+
+
+class SpammerResult(BaseResult):
+    data: SpammerStore
+
+
+class SpammerListResult(BaseResult):
+    data: List[SpammerStore]
+
+
+class SpammerIdsResult(BaseResult):
+    data: List[int]
+
+
+class SpammerErrorResult(BaseResult):
+    data: str

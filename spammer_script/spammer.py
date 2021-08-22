@@ -33,6 +33,13 @@ class ListenThread(Thread):
             added_ids.append(data['id'])
         return added_ids
 
+    async def update_spammer(self, update_data):
+        if update_data['id'] in self.spammers_info:
+            current_statistics = self.spammers_info[update_data['id']]['statistics']
+            self.spammers_info[update_data['id']] = update_data
+            self.spammers_info[update_data['id']]['statistics'] = current_statistics
+        return update_data['id']
+
     async def delete_spammers(self, ids):
         deleted_ids = []
         if len(ids) == 0:
@@ -101,6 +108,12 @@ class ListenThread(Thread):
                 writer.write(json.dumps(message).encode('utf-8'))
                 await writer.drain()
                 logger.info(f'Spammers with ids {add_spammers_ids} added')
+            elif command == 'update':
+                self.restart_event.set()
+                update_spammer_id = await self.update_spammer(message['data'])
+                message['data'] = update_spammer_id
+                writer.write(json.dumps(message).encode('utf-8'))
+                await writer.drain()
             elif command == 'start':
                 self.restart_event.set()
                 start_spammers_ids = await self.start_spammers(message['data'])
@@ -178,13 +191,13 @@ async def spammer(data):
     while True:
         await asyncio.sleep(random.randint(5, 30))
         if data['state'] == 'working':
-            data['target']['current'] += 1
-            if data['target']['current'] >= 100:
-                data['target']['total'] += 1
-                data['target']['current'] = 0
+            data['statistics']['current'] += 1
+            if data['statistics']['current'] >= 100:
+                data['statistics']['total'] += 1
+                data['statistics']['current'] = 0
             current_id = data["id"]
-            current_val = data["target"]["current"]
-            total_val = data["target"]["total"]
+            current_val = data["statistics"]["current"]
+            total_val = data["statistics"]["total"]
             logger.info(
                 f'spammer with id {current_id} make {current_val} current and {total_val} total')
 

@@ -10,14 +10,16 @@ from requests.adapters import HTTPAdapter, Retry
 
 
 def check_spammers(spammers_sample, spammers_checked):
-    spammers_sample = sorted(spammers_sample, key=lambda s: s['spammer_type'])
-    spammers_checked = sorted(spammers_checked, key=lambda s: s['spammer_type'])
+    print('make:', spammers_sample)
+    print('data:', spammers_checked)
+    spammers_sample = sorted(spammers_sample, key=lambda s: s['script_template'])
+    spammers_checked = sorted(spammers_checked, key=lambda s: s['script_template'])
     try:
         for spammer1, spammer2 in zip(spammers_checked, spammers_sample):
-            if spammer1['spammer_type'] != spammer2['spammer_type'] \
+            if spammer1['script_template'] != spammer2['script_template'] \
             or spammer1['login'] != spammer2['login'] \
-            or spammer1['target'] != spammer2['target'] \
-            or spammer1['state'] != spammer2['state'] \
+            or spammer1['password'] != spammer2['password'] \
+            or spammer1['options'] != spammer2['options'] \
             or spammer1['id'] is None:
                 return False
     except KeyError:

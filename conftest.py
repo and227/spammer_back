@@ -51,34 +51,37 @@ def clear_spammers(wait_app_container):
 def make_spammers():
     return [
         {
-          "spammer_type": "111",
+          "script_template": "string",
           "login": "string",
-          "target": {
-            "target_type": "string",
-            "current": 0,
-            "total": 0
-          },
-          "state": "stopped"
+          "password": "string",
+          "state": "stopped",
+          "options": {
+            "opt1": 1,
+            "opt2": "value",
+            "opt3": [1,2,3,4,5]
+          }
         },
         {
-          "spammer_type": "222",
+          "script_template": "string",
           "login": "string",
-          "target": {
-            "target_type": "string",
-            "current": 0,
-            "total": 0
-          },
-          "state": "stopped"
+          "password": "string",
+          "state": "stopped",
+          "options": {
+            "opt1": 1,
+            "opt2": "value",
+            "opt3": [1,2,3,4,5]
+          }
         },
         {
-          "spammer_type": "333",
+          "script_template": "string",
           "login": "string",
-          "target": {
-            "target_type": "string",
-            "current": 0,
-            "total": 0
-          },
-          "state": "stopped"
+          "password": "string",
+          "state": "stopped",
+          "options": {
+            "opt1": 1,
+            "opt2": "value",
+            "opt3": [1,2,3,4,5]
+          }
         },
 ]
 
@@ -86,36 +89,51 @@ def make_spammers():
 def make_stored_spammers():
     return [
         {
-          "id": 39,
-          "spammer_type": "111",
+          "script_template": "string",
           "login": "string",
-          "target": {
-            "target_type": "string",
-            "current": 0,
-            "total": 0
+          "password": "string",
+          "state": "working",
+          "options": {
+            "opt1": 1,
+            "opt2": "value",
+            "opt3": [1,2,3,4,5]
           },
-          "state": "stopped"
+          "id": 18,
+          "statistics": {
+            "total": 0,
+            "current": 15
+          }
         },
         {
-          "id": 40,
-          "spammer_type": "222",
+          "script_template": "string",
           "login": "string",
-          "target": {
-            "target_type": "string",
-            "current": 0,
-            "total": 0
+          "password": "string",
+          "state": "working",
+          "options": {
+            "opt1": 1,
+            "opt2": "value",
+            "opt3": [1,2,3,4,5]
           },
-          "state": "stopped"
+          "id": 18,
+          "statistics": {
+            "total": 0,
+            "current": 15
+          }
         },
         {
-          "id": 41,
-          "spammer_type": "333",
+          "script_template": "string",
           "login": "string",
-          "target": {
-            "target_type": "string",
-            "current": 0,
-            "total": 0
+          "password": "string",
+          "state": "working",
+          "options": {
+            "opt1": 1,
+            "opt2": "value",
+            "opt3": [1,2,3,4,5]
           },
-          "state": "stopped"
-        },
-]
+          "id": 18,
+          "statistics": {
+            "total": 0,
+            "current": 15
+          }
+        }
+    ]

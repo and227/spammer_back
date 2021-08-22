@@ -14,6 +14,7 @@ from spammer_connector import connect_spammer, send_spammer_command, \
 
 from os import path
 import logging.config
+import json
 
 log_file_path = path.join(path.dirname(path.abspath(__file__)), 'logging.conf')
 logging.config.fileConfig(log_file_path, disable_existing_loggers=False)
@@ -59,7 +60,7 @@ async def sync_spammer_script(
 
 @router.post(
     '/',
-    response_model=spammer_schemas.SpammerResult,
+    response_model=spammer_schemas.SpammerIdsResult,
     status_code=status.HTTP_201_CREATED
 )
 async def spammers_create(
@@ -76,36 +77,47 @@ async def spammers_create(
             command='add', data=database_result
         )
     )
-    return spammer_schemas.SpammerResult(
+    return spammer_schemas.SpammerIdsResult(
         status='success',
         data=result
     )
 
 
-@router.put('/', response_model=spammer_schemas.SpammerOut)
+@router.put('/', response_model=spammer_schemas.SpammerResult)
 async def spammers_update(
     spammer_data: spammer_schemas.SpammerIn,
     id=Query(None),
     session: Session = Depends(get_database_session),
     spammer_connector = Depends(connect_spammer)
 ):
+    # update spammer in db
     database_result = spammers.update_spammer_by_id(session, spammer_data, id)
-    result = send_spammer_command(
+
+    # get pydantic model
+    try:
+        database_result = spammers.spammer_from_orm(database_result)
+    except json.JSONDecodeError as e:
+        return spammer_schemas.SpammerErrorResult(
+            status='error',
+            data=e.msg
+        )
+
+    result = await send_spammer_command(
         spammer_connector,
         command=spammer_schemas.SpammerCommand(
-            command='update', data=database_result
-        )
+            command='update', data=database_result)
     )
+    logger.info('updated')
+    logger.info(database_result)
     return spammer_schemas.SpammerResult(
         status='success',
-        data=result
+        data=database_result
     )
 
 
-@router.delete('/', response_model=spammer_schemas.SpammerResult)
+@router.delete('/', response_model=spammer_schemas.SpammerIdsResult)
 async def spammers_delete(
     spammer_data: List[int] = Query([]),
-    id=Query(None),
     session: Session = Depends(get_database_session),
     spammer_connector = Depends(connect_spammer)
 ):
@@ -117,13 +129,13 @@ async def spammers_delete(
             command='delete', data=spammers_ids
         )
     )
-    return spammer_schemas.SpammerResult(
+    return spammer_schemas.SpammerIdsResult(
         status='success',
         data=result
     )
 
 
-@router.get('/', response_model=spammer_schemas.SpammerResult)
+@router.get('/', response_model=spammer_schemas.SpammerListResult)
 async def spammers_get(
     offset: int = Query(0),
     limit: int = Query(0),
@@ -131,20 +143,22 @@ async def spammers_get(
     spammer_connector = Depends(connect_spammer)
 ):
     database_result = spammers.read_spammers(session, offset, limit)
+    logger.info('from database: ' + str(database_result))
     spammers_ids = list(map(lambda m: m.id, database_result))
+    logger.info('ids:' + str(spammers_ids))
     result = await send_spammer_command(
         spammer_connector,
         command=spammer_schemas.SpammerCommand(
             command='state', data=spammers_ids
         )
     )
-    return spammer_schemas.SpammerResult(
+    return spammer_schemas.SpammerListResult(
         status='success',
         data=result
     )
 
 
-@router.get('/status', response_model=spammer_schemas.SpammerResult)
+@router.get('/status', response_model=spammer_schemas.SpammerListResult)
 async def spammers_get_by_id(
     spammer_data: List[int] = Query([]),
     session: Session = Depends(get_database_session),
@@ -158,13 +172,13 @@ async def spammers_get_by_id(
             command='state', data=spammers_ids
         )
     )
-    return spammer_schemas.SpammerResult(
+    return spammer_schemas.SpammerListResult(
         status='success',
         data=result
     )
 
 
-@router.put('/start', response_model=spammer_schemas.SpammerResult)
+@router.put('/start', response_model=spammer_schemas.SpammerIdsResult)
 async def spammers_start_by_id(
     spammer_data: List[int],
     session: Session = Depends(get_database_session),
@@ -178,13 +192,13 @@ async def spammers_start_by_id(
             command='start', data=spammers_ids
         )
     )
-    return spammer_schemas.SpammerResult(
+    return spammer_schemas.SpammerIdsResult(
         status='success',
         data=result
     )
 
 
-@router.put('/stop', response_model=spammer_schemas.SpammerResult)
+@router.put('/stop', response_model=spammer_schemas.SpammerIdsResult)
 async def spammers_start_by_id(
     spammer_data: List[int],
     session: Session = Depends(get_database_session),
@@ -198,7 +212,7 @@ async def spammers_start_by_id(
             command='stop', data=spammers_ids
         )
     )
-    return spammer_schemas.SpammerResult(
+    return spammer_schemas.SpammerIdsResult(
         status='success',
         data=result
     )
