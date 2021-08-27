@@ -149,12 +149,12 @@ class ListenThread(Thread):
             logger.info('Socket connection closed')
 
     async def websocket_handle_command(self, websocket, path):
-        data: str = await websocket.recv()
-        message = json.loads(data)
-        command = message['command']
-        if command == 'state':
-            spammers_state_list = await self.get_spammers_state(message['data'])
-            await websocket.send(json.dumps(spammers_state_list))
+        async for data in websocket:
+            message = json.loads(data)
+            command = message['command']
+            if command == 'state':
+                spammers_state_list = await self.get_spammers_state(message['data'])
+                await websocket.send(json.dumps(spammers_state_list))
 
     def run(self):
         loop = asyncio.new_event_loop()
